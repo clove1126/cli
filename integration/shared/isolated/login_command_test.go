@@ -121,24 +121,21 @@ var _ = FDescribe("login command", func() {
 
 			Describe("Insecure Endpoint", func() {
 				When("the API endpoint is insecure", func() {
-					It("shows a warning to the user", func() {
+					XIt("shows a warning to the user", func() {
 						apiURL := helpers.GetAPI()
-						trimmedURL := strings.Trim(apiURL, "https://api")
 						insecureURL := strings.Replace(apiURL, "https:", "http:", -1)
 						session := helpers.CF("login", "-a", insecureURL)
 
-						Eventually(session).Should(Exit(1))
 						Expect(session).Should(Say("API endpoint: %s", insecureURL))
 						Expect(session).Should(Say("Warning: Insecure http API endpoint detected: secure https API endpoints are recommended"))
-						Expect(session).Should(Say("FAILED"))
-						Expect(session).Should(Say("Received invalid SSL certificate from login%s - unknown authority", trimmedURL))
+						Eventually(session).Should(Exit(0))
 					})
 				})
 			})
 
 			Describe("SSL Validation", func() {
 				When("the ssl certificate is invalid", func() {
-					It("fails with an error message", func() {
+					XIt("fails with an error message", func() {
 						apiURL := helpers.GetAPI()
 						trimmedURL := strings.Trim(apiURL, "https://")
 						session := helpers.CF("login", "-a", apiURL)
