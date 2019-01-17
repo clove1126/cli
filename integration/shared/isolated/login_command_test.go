@@ -1,7 +1,9 @@
 package isolated
 
 import (
+	"fmt"
 	"regexp"
+	"strings"
 
 	"code.cloudfoundry.org/cli/integration/helpers"
 	. "github.com/onsi/ginkgo"
@@ -10,7 +12,7 @@ import (
 	. "github.com/onsi/gomega/gexec"
 )
 
-var _ = Describe("login command", func() {
+var _ = FDescribe("login command", func() {
 	Describe("Help Text", func() {
 		When("--help flag is set", func() {
 			It("displays the command usage", func() {
@@ -116,6 +118,45 @@ var _ = Describe("login command", func() {
 					})
 				})
 			})
+
+			Describe("Insecure Endpoint", func() {
+				When("the API endpoint is insecure", func() {
+					It("shows a warning to the user", func() {
+						apiURL := helpers.GetAPI()
+						trimmedURL := strings.Trim(apiURL, "https://api")
+						insecureURL := strings.Replace(apiURL, "https:", "http:", -1)
+						session := helpers.CF("login", "-a", insecureURL)
+
+						Eventually(session).Should(Exit(1))
+						Expect(session).Should(Say("API endpoint: %s", insecureURL))
+						Expect(session).Should(Say("Warning: Insecure http API endpoint detected: secure https API endpoints are recommended"))
+						Expect(session).Should(Say("FAILED"))
+						Expect(session).Should(Say("Received invalid SSL certificate from login%s - unknown authority", trimmedURL))
+					})
+				})
+			})
+
+			Describe("SSL Validation", func() {
+				When("the ssl certificate is invalid", func() {
+					It("fails with an error message", func() {
+						apiURL := helpers.GetAPI()
+						trimmedURL := strings.Trim(apiURL, "https://")
+						session := helpers.CF("login", "-a", apiURL)
+						Eventually(session).Should(Exit(1))
+						Expect(session).Should(Say("API endpoint: %s", apiURL))
+						Expect(session).Should(Say("FAILED"))
+						Expect(session).Should(Say("Invalid SSL Cert for %s", trimmedURL))
+						Expect(session).Should(Say("TIP: Use 'cf login --skip-ssl-validation' to continue with an insecure API endpoint"))
+
+						session = helpers.CF("api")
+						Eventually(session).Should(Exit(0))
+						Expect(session).ShouldNot(Say("api endpoint:   %s", apiURL))
+					})
+				})
+				When("the ssl certificate is valid", func() {
+
+				})
+			})
 		})
 
 		When("the API endpoint is already set", func() {
@@ -142,6 +183,20 @@ var _ = Describe("login command", func() {
 					})
 				})
 			})
+		})
+	})
+
+	Describe("User Credentials", func() {
+		XIt("prompts the user for email and password", func() {
+			Fail("TODO")
+			username, password := helpers.GetCredentials()
+			buffer := NewBuffer()
+			buffer.Write([]byte(fmt.Sprintf("%s\n%s\n", username, password)))
+			session := helpers.CFWithStdin(buffer, "login")
+			// session := helpers.CF("login", "-u", username, "-p", password)
+			Eventually(session).Should(Say("Email> "))
+			Eventually(session).Should(Say("Password> "))
+			Eventually(session).Should(Exit(0))
 		})
 	})
 
