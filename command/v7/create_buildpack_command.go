@@ -1,14 +1,13 @@
 package v7
 
 import (
-	"code.cloudfoundry.org/cli/command/flag"
-	"strconv"
-
 	"code.cloudfoundry.org/cli/actor/sharedaction"
 	"code.cloudfoundry.org/cli/actor/v7action"
 	"code.cloudfoundry.org/cli/command"
+	"code.cloudfoundry.org/cli/command/flag"
 	"code.cloudfoundry.org/cli/command/v7/shared"
 	"code.cloudfoundry.org/cli/util/ui"
+	"strconv"
 )
 
 //go:generate counterfeiter . CreateBuildpackActor
@@ -16,12 +15,14 @@ import (
 type CreateBuildpackActor interface {
 	CreateBuildpack(buildpack v7action.Buildpack) (v7action.Buildpack, v7action.Warnings, error)
 	UploadBuildpack(guid string, pathToBuildpackBits string, progressBar v7action.SimpleProgressBar) (v7action.Warnings, error)
+	PrepareBuildpackBits(inputPath string, tmpDirPath string, downloader v7action.Downloader) (string, error)
 }
 
 type CreateBuildpackCommand struct {
 	RequiredArgs    flag.CreateBuildpackArgs `positional-args:"Yes"`
 	usage           interface{}              `usage:"CF_NAME create-buildpack"`
 	relatedCommands interface{}              `related_commands:"push"`
+	Disable         bool                     `long:"disable" description:"Disable the buildpack from being used for staging"`
 
 	UI          command.UI
 	Config      command.Config
@@ -63,9 +64,22 @@ func (cmd CreateBuildpackCommand) Execute(args []string) error {
 	})
 	cmd.UI.DisplayNewline()
 
+	//downloader := download.NewDownloader(time.Second * 30)
+	//tmpDirPath, err := ioutil.TempDir("", "buildpack-dir-")
+	//if err != nil {
+	//	return err
+	//}
+	//defer os.RemoveAll(tmpDirPath)
+	//
+	//pathToBuildpackBits, err := cmd.Actor.PrepareBuildpackBits(string(cmd.RequiredArgs.Path), tmpDirPath, downloader)
+	//if err != nil {
+	//	return err
+	//}
+
 	createdBuildpack, warnings, err := cmd.Actor.CreateBuildpack(v7action.Buildpack{
 		Name:     cmd.RequiredArgs.Buildpack,
 		Position: cmd.RequiredArgs.Position,
+		Enabled:  !cmd.Disable,
 	})
 	cmd.UI.DisplayWarnings(warnings)
 	if err != nil {
